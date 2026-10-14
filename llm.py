@@ -4,8 +4,30 @@ from openai import OpenAI
 
 import config
 
+OPENROUTER_URL = "https://openrouter.ai/api/v1"
+
+
+def _openrouter_chat(model, system, prompt, max_tokens=None):
+    client = OpenAI(api_key=config.keys["openrouter"], base_url=OPENROUTER_URL)
+    kwargs = {"max_tokens": max_tokens} if max_tokens else {}
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ],
+        **kwargs,
+    )
+    return response.choices[0].message.content or ""
+
 
 def ask_claude(system, prompt):
+    if config.keys["openrouter"]:
+        try:
+            return _openrouter_chat(config.models["claude"], system, prompt, 6000)
+        except Exception as error:
+            return f"שגיאת OpenRouter: {error}"
+
     if not config.keys["anthropic"]:
         return "שגיאה: לא הוגדר ANTHROPIC_API_KEY"
 
@@ -25,6 +47,12 @@ def ask_claude(system, prompt):
 
 
 def ask_gpt(system, prompt):
+    if config.keys["openrouter"]:
+        try:
+            return _openrouter_chat(config.models["gpt"], system, prompt)
+        except Exception as error:
+            return f"שגיאת OpenRouter: {error}"
+
     if not config.keys["openai"]:
         return "שגיאה: לא הוגדר OPENAI_API_KEY"
 
@@ -43,5 +71,9 @@ def ask_gpt(system, prompt):
         return f"שגיאת ChatGPT: {error}"
 
 
+def has_claude():
+    return bool(config.keys["openrouter"] or config.keys["anthropic"])
+
+
 def has_gpt():
-    return bool(config.keys["openai"])
+    return bool(config.keys["openrouter"] or config.keys["openai"])

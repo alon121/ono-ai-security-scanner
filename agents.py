@@ -176,7 +176,7 @@ class CVEAnalystAgent:
 
         if not llm.has_gpt():
             log("אין מפתח OpenAI - מדלג על האימות המוצלב", "warn")
-            return report, "אימות מוצלב לא בוצע: לא הוגדר OPENAI_API_KEY."
+            return report, "אימות מוצלב לא בוצע: לא הוגדר OPENROUTER_API_KEY או OPENAI_API_KEY."
 
         log(f"אנליסט ה-CVE: מפעיל את ChatGPT ({config.models['gpt']}) לאימות מוצלב", "ai")
         log("ChatGPT משווה את הדו\"ח לנתוני NVD ומחפש אי דיוקים ופרצות שפוספסו", "ai")
@@ -249,7 +249,7 @@ class AdvisorAgent:
 
     def second_opinion(self, message):
         if not llm.has_gpt():
-            return "לא הוגדר OPENAI_API_KEY - אין דעה שנייה."
+            return "לא הוגדר OPENROUTER_API_KEY או OPENAI_API_KEY - אין דעה שנייה."
         return llm.ask_gpt(self.ROLE, message)
 
     def reset(self):
