@@ -8,6 +8,7 @@ import gradio as gr
 
 import agents
 import config
+import llm
 import pdf_report
 
 HERE = Path(__file__).parent
@@ -143,8 +144,8 @@ def build_theme():
 
 def render_status():
     services = [
-        ("Claude", bool(config.keys["anthropic"])),
-        ("ChatGPT", bool(config.keys["openai"])),
+        ("Claude", llm.has_claude()),
+        ("ChatGPT", llm.has_gpt()),
         ("NVD", True),
     ]
     pills = "".join(

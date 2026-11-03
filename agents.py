@@ -32,10 +32,10 @@ def to_json(data):
     return json.dumps(data, ensure_ascii=False, indent=2)
 
 
-def call_model(log, model_name, ask, role, prompt):
+def call_model(log, model_name, ask, role, prompt, history=None):
     """מפעיל מודל ומדווח לקונסולה כמה זמן זה לקח והאם הצליח."""
     started = time.time()
-    answer = ask(role, prompt)
+    answer = ask(role, prompt, history=history) if history else ask(role, prompt)
     seconds = time.time() - started
 
     if answer.startswith("שגיא"):
@@ -176,7 +176,7 @@ class CVEAnalystAgent:
 
         if not llm.has_gpt():
             log("אין מפתח OpenAI - מדלג על האימות המוצלב", "warn")
-            return report, "אימות מוצלב לא בוצע: לא הוגדר OPENAI_API_KEY."
+            return report, "אימות מוצלב לא בוצע: לא הוגדר OPENROUTER_API_KEY או OPENAI_API_KEY."
 
         log(f"אנליסט ה-CVE: מפעיל את ChatGPT ({config.models['gpt']}) לאימות מוצלב", "ai")
         log("ChatGPT משווה את הדו\"ח לנתוני NVD ומחפש אי דיוקים ופרצות שפוספסו", "ai")
@@ -213,6 +213,7 @@ class AdvisorAgent:
 כשאתה ממליץ על חלופה, ציין גם מה עלות המעבר."""
 
     CVE_PATTERN = r"CVE-\d{4}-\d{4,7}"
+    MAX_HISTORY_MESSAGES = 20  # 10 סבבי שאלה ותשובה אחרונים נשלחים למודל
 
     def __init__(self):
         self.history = []
@@ -228,10 +229,13 @@ class AdvisorAgent:
             prompt = question
 
         log(f"יועץ האבטחה: מפעיל את Claude ({config.models['claude']}) כדי לענות", "ai")
-        answer = call_model(log, "Claude", llm.ask_claude, self.ROLE, prompt)
+        recent = self.history[-self.MAX_HISTORY_MESSAGES:]
+        answer = call_model(log, "Claude", llm.ask_claude, self.ROLE, prompt, recent)
 
-        self.history.append({"role": "user", "content": message})
-        self.history.append({"role": "assistant", "content": answer})
+        # תשובת שגיאה לא נשמרת, כדי שלא תזהם את ההקשר של השאלות הבאות
+        if not answer.startswith("שגיא"):
+            self.history.append({"role": "user", "content": message})
+            self.history.append({"role": "assistant", "content": answer})
         return answer
 
     def _fetch_mentioned_cves(self, message, log):
@@ -249,7 +253,7 @@ class AdvisorAgent:
 
     def second_opinion(self, message):
         if not llm.has_gpt():
-            return "לא הוגדר OPENAI_API_KEY - אין דעה שנייה."
+            return "לא הוגדר OPENROUTER_API_KEY או OPENAI_API_KEY - אין דעה שנייה."
         return llm.ask_gpt(self.ROLE, message)
 
     def reset(self):
